@@ -18,7 +18,8 @@ router.get('/cross-gym', async (req, res) => {
 router.get('/activity', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
-    const data = await statsService.getRecentActivity(limit);
+    const gymId = req.query.gymId || null;
+    const data = await statsService.getRecentActivity(limit, gymId);
     res.json(data);
   } catch (err) {
     console.error('GET /api/analytics/activity error:', err);

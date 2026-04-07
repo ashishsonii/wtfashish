@@ -58,6 +58,11 @@ export function StoreProvider({ children }) {
 
   useEffect(() => { loadData(); }, []);
 
+  const selectedGymIdRef = useRef(selectedGymId);
+  useEffect(() => {
+    selectedGymIdRef.current = selectedGymId;
+  }, [selectedGymId]);
+
   // Load gym-specific data when gym changes
   useEffect(() => {
     if (!selectedGymId) return;
@@ -65,7 +70,7 @@ export function StoreProvider({ children }) {
       try {
         const [liveData, activityData] = await Promise.all([
           apiFetch(`/gyms/${selectedGymId}/live`),
-          apiFetch('/analytics/activity?limit=20'),
+          apiFetch(`/analytics/activity?gymId=${selectedGymId}&limit=20`),
         ]);
         setGymLive(liveData);
         setActivityFeed(activityData);
@@ -125,11 +130,13 @@ export function StoreProvider({ children }) {
         }
         // Update summary
         setSummary(prev => ({ ...prev, total_checked_in: prev.total_checked_in + 1 }));
-        // Add to feed
-        setActivityFeed(prev => [{
-          event_type: 'checkin', member_name: msg.member_name,
-          gym_name: gyms.find(g => g.id === msg.gym_id)?.name || '', timestamp: msg.timestamp, gym_id: msg.gym_id,
-        }, ...prev].slice(0, 20));
+        // Add to feed only if it matches current gym view
+        if (msg.gym_id === selectedGymIdRef.current) {
+          setActivityFeed(prev => [{
+            event_type: 'checkin', member_name: msg.member_name,
+            gym_name: gyms.find(g => g.id === msg.gym_id)?.name || '', timestamp: msg.timestamp, gym_id: msg.gym_id,
+          }, ...prev].slice(0, 20));
+        }
         break;
       }
       case 'CHECKOUT_EVENT': {
@@ -143,26 +150,33 @@ export function StoreProvider({ children }) {
             capacity_pct: msg.capacity_pct,
           } : prev);
         }
+        // Update summary
         setSummary(prev => ({ ...prev, total_checked_in: Math.max(0, prev.total_checked_in - 1) }));
-        setActivityFeed(prev => [{
-          event_type: 'checkout', member_name: msg.member_name,
-          gym_name: gyms.find(g => g.id === msg.gym_id)?.name || '', timestamp: msg.timestamp, gym_id: msg.gym_id,
-        }, ...prev].slice(0, 20));
+        
+        if (msg.gym_id === selectedGymIdRef.current) {
+          setActivityFeed(prev => [{
+            event_type: 'checkout', member_name: msg.member_name,
+            gym_name: gyms.find(g => g.id === msg.gym_id)?.name || '', timestamp: msg.timestamp, gym_id: msg.gym_id,
+          }, ...prev].slice(0, 20));
+        }
         break;
       }
       case 'PAYMENT_EVENT': {
         setGyms(prev => prev.map(g =>
-          g.id === msg.gym_id ? { ...g, today_revenue: msg.today_total } : g
+          g.id === msg.gym_id ? { ...g, today_revenue: (g.today_revenue || 0) + msg.amount } : g
         ));
         if (gymLive && gymLive.gym?.id === msg.gym_id) {
-          setGymLive(prev => prev ? { ...prev, today_revenue: msg.today_total } : prev);
+          setGymLive(prev => prev ? { ...prev, today_revenue: (prev.today_revenue || 0) + msg.amount } : prev);
         }
         setSummary(prev => ({ ...prev, total_revenue: prev.total_revenue + msg.amount }));
-        setActivityFeed(prev => [{
-          event_type: 'payment', member_name: msg.member_name,
-          gym_name: gyms.find(g => g.id === msg.gym_id)?.name || '', timestamp: new Date().toISOString(),
-          gym_id: msg.gym_id, amount: msg.amount,
-        }, ...prev].slice(0, 20));
+        
+        if (msg.gym_id === selectedGymIdRef.current) {
+          setActivityFeed(prev => [{
+            event_type: 'payment', member_name: msg.member_name, amount: msg.amount,
+            gym_name: gyms.find(g => g.id === msg.gym_id)?.name || '', timestamp: msg.timestamp || new Date().toISOString(),
+            gym_id: msg.gym_id,
+          }, ...prev].slice(0, 20));
+        }
         break;
       }
       case 'ANOMALY_DETECTED': {

@@ -15,7 +15,8 @@ test.describe('WTF LivePulse E2E Tests', () => {
     // Gym selector must be visible
     await expect(page.locator('[data-testid="gym-selector"]')).toBeVisible();
 
-    // Check gym selector has chips
+    // Wait until at least one gym chip is rendered (async API load)
+    await expect(page.locator('[data-testid="gym-option"]').first()).toBeVisible({ timeout: 10000 });
     const gymChips = page.locator('[data-testid="gym-option"]');
     const count = await gymChips.count();
     expect(count).toBeGreaterThanOrEqual(1);

@@ -14,10 +14,11 @@ function setupWebSocket(server) {
 
     (async () => {
       try {
-        const [gyms, summary, anomalies] = await Promise.all([
+        const [gyms, summary, anomalies, recentEvents] = await Promise.all([
           statsService.getAllGyms(),
           statsService.getAllGymsSummary(),
           anomalyService.getActive(),
+          statsService.getRecentActivity(20),
         ]);
 
         ws.send(JSON.stringify({
@@ -25,6 +26,7 @@ function setupWebSocket(server) {
           gyms,
           summary,
           anomalies,
+          recentEvents,
           timestamp: new Date().toISOString(),
         }));
       } catch (err) {

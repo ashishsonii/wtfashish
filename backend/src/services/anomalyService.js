@@ -70,18 +70,15 @@ const anomalyService = {
       FROM gyms g
       LEFT JOIN checkins c ON c.gym_id = g.id AND c.checked_out IS NULL
       WHERE g.status = 'active'
+        AND NOT EXISTS (
+          SELECT 1 FROM anomalies a
+          WHERE a.gym_id = g.id AND a.type = 'capacity_breach' AND a.resolved = FALSE
+        )
       GROUP BY g.id, g.name, g.capacity
       HAVING COUNT(c.id) >= g.capacity * 0.9
     `);
 
     for (const gym of gyms) {
-      // Check if already flagged
-      const { rows: existing } = await pool.query(
-        `SELECT id FROM anomalies WHERE gym_id = $1 AND type = 'capacity_breach' AND resolved = FALSE`,
-        [gym.id]
-      );
-      if (existing.length > 0) continue;
-
       const pct = Math.round((gym.current_count / gym.capacity) * 100);
       const message = `${gym.name} at ${pct}% capacity (${gym.current_count}/${gym.capacity}) — risk of overcrowding`;
       const { rows } = await pool.query(
@@ -138,15 +135,13 @@ const anomalyService = {
       WHERE g.status = 'active'
         AND COALESCE(lastweek.total, 0) > 0
         AND COALESCE(today.total, 0) <= COALESCE(lastweek.total, 0) * 0.7
+        AND NOT EXISTS (
+          SELECT 1 FROM anomalies a
+          WHERE a.gym_id = g.id AND a.type = 'revenue_drop' AND a.resolved = FALSE
+        )
     `);
 
     for (const gym of gyms) {
-      const { rows: existing } = await pool.query(
-        `SELECT id FROM anomalies WHERE gym_id = $1 AND type = 'revenue_drop' AND resolved = FALSE`,
-        [gym.id]
-      );
-      if (existing.length > 0) continue;
-
       const dropPct = Math.round((1 - gym.today_revenue / gym.lastweek_revenue) * 100);
       const message = `${gym.name} revenue down ${dropPct}% today (₹${Number(gym.today_revenue).toLocaleString('en-IN')}) vs same day last week (₹${Number(gym.lastweek_revenue).toLocaleString('en-IN')})`;
       const { rows } = await pool.query(
@@ -187,7 +182,7 @@ const anomalyService = {
 
   // Get all anomalies (active + recently resolved)
   async getActive(gymId, severity) {
-    let query = 'SELECT a.*, g.name AS gym_name FROM anomalies a JOIN gyms g ON g.id = a.gym_id WHERE 1=1';
+    let query = 'SELECT a.*, g.name AS gym_name FROM anomalies a JOIN gyms g ON g.id = a.gym_id WHERE (a.resolved = FALSE OR (a.resolved = TRUE AND a.resolved_at >= NOW() - INTERVAL \'24 hours\'))';
     const params = [];
     if (gymId) { params.push(gymId); query += ` AND a.gym_id = $${params.length}`; }
     if (severity) { params.push(severity); query += ` AND a.severity = $${params.length}`; }

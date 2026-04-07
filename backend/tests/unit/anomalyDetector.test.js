@@ -68,7 +68,6 @@ describe('AnomalyService', () => {
         .mockResolvedValueOnce({
           rows: [{ id: 'gym-bandra', name: 'WTF Gyms — Bandra West', capacity: 300, current_count: 280 }]
         })
-        .mockResolvedValueOnce({ rows: [] }) // no existing anomaly
         .mockResolvedValueOnce({
           rows: [{ id: 'anom-2', gym_id: 'gym-bandra', type: 'capacity_breach', severity: 'critical' }]
         })
@@ -116,7 +115,6 @@ describe('AnomalyService', () => {
         .mockResolvedValueOnce({
           rows: [{ id: 'gym-salt', name: 'WTF Gyms — Salt Lake', today_revenue: 3000, lastweek_revenue: 15000 }]
         })
-        .mockResolvedValueOnce({ rows: [] }) // no existing
         .mockResolvedValueOnce({
           rows: [{ id: 'anom-3', gym_id: 'gym-salt', type: 'revenue_drop', severity: 'warning' }]
         })

@@ -176,21 +176,34 @@ const statsService = {
   },
 
   // Get recent activity feed across all gyms
-  async getRecentActivity(limit = 20) {
+  async getRecentActivity(limit = 20, gymId = null) {
+    const gymFilter = gymId ? 'AND c.gym_id = $2' : '';
+    const paymentGymFilter = gymId ? 'AND p.gym_id = $2' : '';
+    const params = gymId ? [limit, gymId] : [limit];
+
     const { rows } = await pool.query(`
       (
         SELECT 'checkin' AS event_type, m.name AS member_name, g.name AS gym_name, c.checked_in AS timestamp, g.id AS gym_id
         FROM checkins c JOIN members m ON m.id = c.member_id JOIN gyms g ON g.id = c.gym_id
+        WHERE 1=1 ${gymFilter}
         ORDER BY c.checked_in DESC LIMIT $1
+      )
+      UNION ALL
+      (
+        SELECT 'checkout' AS event_type, m.name AS member_name, g.name AS gym_name, c.checked_out AS timestamp, g.id AS gym_id
+        FROM checkins c JOIN members m ON m.id = c.member_id JOIN gyms g ON g.id = c.gym_id
+        WHERE c.checked_out IS NOT NULL ${gymFilter}
+        ORDER BY c.checked_out DESC LIMIT $1
       )
       UNION ALL
       (
         SELECT 'payment' AS event_type, m.name AS member_name, g.name AS gym_name, p.paid_at AS timestamp, g.id AS gym_id
         FROM payments p JOIN members m ON m.id = p.member_id JOIN gyms g ON g.id = p.gym_id
+        WHERE 1=1 ${paymentGymFilter}
         ORDER BY p.paid_at DESC LIMIT $1
       )
       ORDER BY timestamp DESC LIMIT $1
-    `, [limit]);
+    `, params);
     return rows;
   },
 

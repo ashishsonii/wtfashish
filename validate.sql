@@ -1,0 +1,10 @@
+SELECT 'V1_Gyms' as test, COUNT(*) as result FROM gyms;
+SELECT 'V2_Members' as test, COUNT(*) as result FROM members;
+SELECT 'V3_Active_Members' as test, COUNT(*) as result FROM members WHERE status = 'active';
+SELECT 'V4_Total_Checkins' as test, COUNT(*) as result FROM checkins;
+SELECT 'V5_Open_Checkins' as test, COUNT(*) as result FROM checkins WHERE checked_out IS NULL;
+SELECT 'V6_Payments' as test, COUNT(*) as result FROM payments;
+SELECT 'V7_Churn_Risk' as test, COUNT(*) as result FROM members WHERE last_checkin_at < NOW() - INTERVAL '45 days' AND status = 'active';
+SELECT 'V8_Bandra_Open_Checkins' as test, COUNT(*) as result FROM checkins WHERE gym_id = (SELECT id FROM gyms WHERE name ILIKE '%Bandra%') AND checked_out IS NULL;
+SELECT 'V9_Velachery_Open_Checkins' as test, COUNT(*) as result FROM checkins WHERE gym_id = (SELECT id FROM gyms WHERE name ILIKE '%Velachery%') AND checked_out IS NULL;
+SELECT 'V10_Bandra_Revenue_30d' as test, SUM(amount) as result FROM payments WHERE gym_id = (SELECT id FROM gyms WHERE name ILIKE '%Bandra%') AND paid_at >= NOW() - INTERVAL '30 days';

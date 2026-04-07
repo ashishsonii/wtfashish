@@ -1,3 +1,4 @@
+import React from 'react';
 import { useStore } from '../store/StoreContext';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -98,8 +99,8 @@ export default function Analytics() {
             ))}
             {/* Day rows */}
             {DAYS.map((day, dow) => (
-              <>
-                <div key={`label-${dow}`} className="heatmap-label">{day}</div>
+              <React.Fragment key={dow}>
+                <div className="heatmap-label">{day}</div>
                 {Array.from({length: 24}, (_, hour) => {
                   const val = getHeatVal(dow, hour);
                   return (
@@ -111,7 +112,7 @@ export default function Analytics() {
                     </div>
                   );
                 })}
-              </>
+              </React.Fragment>
             ))}
           </div>
         </div>
@@ -187,13 +188,14 @@ export default function Analytics() {
             ) : (
               analytics.churn_risk.slice(0, 50).map(member => {
                 const daysAgo = Math.floor((Date.now() - new Date(member.last_checkin_at).getTime()) / 86400000);
+                const riskClass = (member.risk_level || '').toLowerCase();
                 return (
-                  <div key={member.id} className={`churn-item ${member.risk_level}`}>
+                  <div key={member.id} className={`churn-item ${riskClass}`}>
                     <span>{member.name}</span>
                     <span style={{color:'var(--text-muted)',fontSize:12,fontFamily:'var(--font-mono)'}}>
                       {daysAgo} days ago
                     </span>
-                    <span className={`risk-label ${member.risk_level}`}>
+                    <span className={`risk-label ${riskClass}`}>
                       {member.risk_level?.toUpperCase()}
                     </span>
                   </div>
